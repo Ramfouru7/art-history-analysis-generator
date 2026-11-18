@@ -16,7 +16,7 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   images: {
     remotePatterns: [
-      { protocol: "https", hostname: "upload.wikimedia.org" },
+      { protocol: "https", hostname: "www.artic.edu" },
       { protocol: "https", hostname: "images.metmuseum.org" },
     ],
   },

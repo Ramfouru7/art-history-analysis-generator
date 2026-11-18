@@ -7,26 +7,45 @@ export interface AnalysisStep {
   body: string;
 }
 
-export interface ArtworkDetails {
+export interface ArtworkFacts {
   title: string;
-  artist: string | null;
+  artist: string;
+  date: string | null;
+  period: string | null;
+  culture: string | null;
+  medium: string | null;
+}
+
+export type MuseumSource = "met" | "aic";
+
+export interface MuseumRecord {
+  source: MuseumSource;
+  sourceName: string;
+  objectId: string;
+  objectUrl: string;
+  title: string;
+  artist: string;
   date: string | null;
   medium: string | null;
-  imageUrl: string | null;
+  culture: string | null;
+  period: string | null;
+  creditLine: string | null;
+  imageUrl: string;
   imageAlt: string;
 }
 
 export interface AnalysisResult {
-  query: string;
-  subtitle: string;
-  artwork: ArtworkDetails;
+  request: AnalyzeRequestBody;
+  artwork: ArtworkFacts;
+  museum: MuseumRecord | null;
   steps: AnalysisStep[];
-  mode: "preview" | "live";
-  notice: string | null;
+  model: string;
+  generatedAt: string;
 }
 
 export interface AnalyzeRequestBody {
-  prompt: string;
+  artist: string;
+  title: string;
 }
 
-export const MAX_PROMPT_LENGTH = 500;
+export const MAX_FIELD_LENGTH = 120;

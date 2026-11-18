@@ -1,9 +1,16 @@
 import { NextResponse } from "next/server";
 
-import { generateAnalysis } from "@/lib/analysis/service";
-import { MAX_PROMPT_LENGTH } from "@/lib/analysis/types";
+import { AnalysisError, generateAnalysis } from "@/lib/analysis/service";
+import { MAX_FIELD_LENGTH } from "@/lib/analysis/types";
 
 export const runtime = "nodejs";
+export const maxDuration = 60;
+
+function readField(body: unknown, key: "artist" | "title"): string {
+  if (typeof body !== "object" || body === null || !(key in body)) return "";
+  const value = (body as Record<string, unknown>)[key];
+  return typeof value === "string" ? value.replace(/\s+/g, " ").trim() : "";
+}
 
 export async function POST(request: Request) {
   let body: unknown;
@@ -13,27 +20,31 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Request body must be valid JSON." }, { status: 400 });
   }
 
-  const prompt =
-    typeof body === "object" && body !== null && "prompt" in body && typeof body.prompt === "string"
-      ? body.prompt.trim()
-      : "";
+  const artist = readField(body, "artist");
+  const title = readField(body, "title");
 
-  if (!prompt) {
-    return NextResponse.json({ error: "Please enter an artist or artwork to explore." }, { status: 400 });
+  if (!artist || !title) {
+    return NextResponse.json(
+      { error: "Please enter both the artist's name and the artwork title." },
+      { status: 400 },
+    );
   }
 
-  if (prompt.length > MAX_PROMPT_LENGTH) {
+  if (artist.length > MAX_FIELD_LENGTH || title.length > MAX_FIELD_LENGTH) {
     return NextResponse.json(
-      { error: `Please keep your request under ${MAX_PROMPT_LENGTH} characters.` },
+      { error: `Please keep each field under ${MAX_FIELD_LENGTH} characters.` },
       { status: 400 },
     );
   }
 
   try {
-    const analysis = await generateAnalysis(prompt);
+    const analysis = await generateAnalysis({ artist, title });
     return NextResponse.json(analysis, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
-    console.error("Analysis generation failed:", error);
+    if (error instanceof AnalysisError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
+    console.error("Unexpected analysis failure:", error);
     return NextResponse.json({ error: "We couldn't generate this analysis. Please try again." }, { status: 500 });
   }
 }
