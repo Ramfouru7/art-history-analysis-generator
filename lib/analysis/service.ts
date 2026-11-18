@@ -97,6 +97,9 @@ function toFriendlyError(error: unknown): AnalysisError {
       return new AnalysisError("The analysis service is not authorized. Please check the server's OpenAI API key.", 503);
     }
     if (error.status === 429) {
+      if (error.type === "insufficient_quota" || error.code === "insufficient_quota" || error.code === "credit_balance_exhausted") {
+        return new AnalysisError("The analysis service has run out of OpenAI credits. Please add billing credits to the OpenAI account.", 503);
+      }
       return new AnalysisError("The analysis service is busy right now. Please wait a moment and try again.", 429);
     }
   } else {
