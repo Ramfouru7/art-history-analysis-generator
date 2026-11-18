@@ -204,8 +204,94 @@ async function searchArtInstitute(artist: string, title: string): Promise<Museum
  * collection is checked first; the Art Institute of Chicago is a fallback.
  * Returns null rather than guessing when no record matches both artist and title.
  */
+
+interface CommonsImageInfo {
+  url?: string;
+  thumburl?: string;
+  descriptionurl?: string;
+  extmetadata?: Record<string, { value?: string }>;
+}
+
+interface CommonsPage {
+  pageid: number;
+  title: string;
+  imageinfo?: CommonsImageInfo[];
+}
+
+interface CommonsSearchResponse {
+  query?: {
+    pages?: Record<string, CommonsPage>;
+  };
+}
+
+async function searchWikimediaCommons(
+  artist: string,
+  title: string,
+): Promise<MuseumRecord | null> {
+  const params = new URLSearchParams({
+    action: "query",
+    generator: "search",
+    gsrsearch: `filetype:bitmap "${title}" ${artist}`,
+    gsrnamespace: "6",
+    gsrlimit: "15",
+    prop: "imageinfo",
+    iiprop: "url|extmetadata",
+    iiurlwidth: "843",
+    format: "json",
+    origin: "*",
+  });
+
+  const search = await getJson<CommonsSearchResponse>(
+    `https://commons.wikimedia.org/w/api.php?${params}`,
+  );
+
+  const pages = Object.values(search?.query?.pages ?? {});
+
+  const matches = pages
+    .filter((page) => {
+      const fileTitle = page.title.replace(/^File:/i, "");
+      return (
+        titleTokens(title).every((token) =>
+          titleTokens(fileTitle).includes(token),
+        ) &&
+        artistMatches(artist, fileTitle) &&
+        Boolean(page.imageinfo?.[0]?.thumburl || page.imageinfo?.[0]?.url)
+      );
+    });
+
+  const best = matches[0];
+  const image = best?.imageinfo?.[0];
+
+  if (!best || !image) return null;
+
+  const metadata = image.extmetadata ?? {};
+
+  return {
+    source: "commons",
+    sourceName: "Wikimedia Commons",
+    objectId: String(best.pageid),
+    objectUrl: image.descriptionurl || `https://commons.wikimedia.org/wiki/${encodeURIComponent(best.title.replace(/ /g, "_"))}`,
+    title,
+    artist,
+    date: null,
+    medium: null,
+    culture: null,
+    period: null,
+    creditLine:
+      metadata.Credit?.value ||
+      metadata.Artist?.value ||
+      metadata.LicenseShortName?.value ||
+      "Wikimedia Commons",
+    imageUrl: image.thumburl || image.url || "",
+    imageAlt: `${title} by ${artist}, image from Wikimedia Commons`,
+  };
+}
 export async function findMuseumArtwork(artist: string, title: string): Promise<MuseumRecord | null> {
   const met = await searchMet(artist, title);
   if (met) return met;
-  return searchArtInstitute(artist, title);
+
+  const aic = await searchArtInstitute(artist, title);
+  if (aic) return aic;
+
+  return searchWikimediaCommons(artist, title);
 }
