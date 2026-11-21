@@ -199,7 +199,93 @@ async function searchArtInstitute(artist: string, title: string): Promise<Museum
   };
 }
 
-/**
+interface ClevelandArtwork {
+  id: number;
+  accession_number?: string;
+  title: string;
+  creators?: Array<{ description?: string; name?: string }> | string[];
+  creation_date?: string;
+  technique?: string;
+  support_materials?: string;
+  culture?: string;
+  department?: string;
+  creditline?: string;
+  share_license_status?: string;
+  url?: string;
+  images?: {
+    web?: {
+      url?: string;
+    };
+  };
+}
+
+interface ClevelandSearchResponse {
+  data?: ClevelandArtwork[];
+}
+
+async function searchClevelandMuseum(
+  artist: string,
+  title: string,
+): Promise<MuseumRecord | null> {
+  const params = new URLSearchParams({
+    q: `${artist} ${title}`,
+    cc0: "",
+    has_image: "1",
+    limit: "20",
+  });
+
+  const search = await getJson<ClevelandSearchResponse>(
+    `https://openaccess-api.clevelandart.org/api/artworks/?${params}`,
+  );
+
+  const matches = (search?.data ?? [])
+    .filter((item) =>
+      item.share_license_status === "CC0" &&
+      Boolean(item.images?.web?.url) &&
+      titleMatches(title, item.title)
+    )
+    .filter((item) => {
+      const creators = (item.creators ?? [])
+        .map((creator) =>
+          typeof creator === "string"
+            ? creator
+            : creator.description ?? creator.name ?? ""
+        )
+        .join(" ");
+
+      return artistMatches(artist, creators);
+    });
+
+  const best = matches[0];
+
+  if (!best?.images?.web?.url) return null;
+
+  const artistName = (best.creators ?? [])
+    .map((creator) =>
+      typeof creator === "string"
+        ? creator
+        : creator.description ?? creator.name ?? ""
+    )
+    .filter(Boolean)
+    .join(", ") || artist;
+
+  return {
+    source: "cleveland",
+    sourceName: "Cleveland Museum of Art",
+    objectId: String(best.id),
+    objectUrl: best.url ||
+      `https://www.clevelandart.org/art/${best.accession_number ?? best.id}`,
+    title: best.title,
+    artist: artistName,
+    date: best.creation_date ?? null,
+    medium: best.technique ?? best.support_materials ?? null,
+    culture: best.culture ?? null,
+    period: best.department ?? null,
+    creditLine: best.creditline ?? "Cleveland Museum of Art",
+    imageUrl: best.images.web.url,
+    imageAlt: `${best.title} by ${artistName}, from the Cleveland Museum of Art`,
+  };
+}/**
  * Looks up a public-domain image for the requested artwork. The Met Open Access
  * collection is checked first; the Art Institute of Chicago is a fallback.
  * Returns null rather than guessing when no record matches both artist and title.
@@ -286,12 +372,18 @@ async function searchWikimediaCommons(
     imageAlt: `${title} by ${artist}, image from Wikimedia Commons`,
   };
 }
-export async function findMuseumArtwork(artist: string, title: string): Promise<MuseumRecord | null> {
+export async function findMuseumArtwork(
+  artist: string,
+  title: string,
+): Promise<MuseumRecord | null> {
   const met = await searchMet(artist, title);
   if (met) return met;
 
   const aic = await searchArtInstitute(artist, title);
   if (aic) return aic;
+
+  const cleveland = await searchClevelandMuseum(artist, title);
+  if (cleveland) return cleveland;
 
   return searchWikimediaCommons(artist, title);
 }
