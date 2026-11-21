@@ -16,7 +16,12 @@ export interface ArtworkFacts {
   medium: string | null;
 }
 
-export type MuseumSource = "met" | "aic" | "commons" | "cleveland";
+export type MuseumSource =
+  | "met"
+  | "aic"
+  | "commons"
+  | "cleveland"
+  | "nga";
 
 export interface MuseumRecord {
   source: MuseumSource;
