@@ -51,7 +51,7 @@ function titleMatches(requested: string, candidate: string): boolean {
 function artistMatches(requested: string, candidate: string): boolean {
   const wanted = normalize(requested).split(" ").filter((token) => token.length > 1);
   const found = new Set(normalize(candidate).split(" "));
-  return wanted.length > 0 && wanted.every((token) => found.has(token));
+  return wanted.length > 0 && wanted.some((token) => found.has(token));
 }
 
 function matchScore(requestedTitle: string, candidateTitle: string): number {
