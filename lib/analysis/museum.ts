@@ -363,11 +363,17 @@ async function searchWikimediaCommons(
     medium: null,
     culture: null,
     period: null,
-    creditLine:
-      metadata.Credit?.value ||
-      metadata.Artist?.value ||
-      metadata.LicenseShortName?.value ||
-      "Wikimedia Commons",
+    creditLine: String(
+  metadata.Credit?.value ||
+  metadata.Artist?.value ||
+  metadata.LicenseShortName?.value ||
+  "Wikimedia Commons"
+)
+  .replace(/<[^>]*>/g, " ")
+  .replace(/&nbsp;/g, " ")
+  .replace(/&amp;/g, "&")
+  .replace(/\s+/g, " ")
+  .trim(),
     imageUrl: image.thumburl || image.url || "",
     imageAlt: `${title} by ${artist}, image from Wikimedia Commons`,
   };
