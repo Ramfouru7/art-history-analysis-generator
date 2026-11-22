@@ -383,7 +383,9 @@ export async function findMuseumArtwork(
   if (aic) return aic;
 
   const cleveland = await searchClevelandMuseum(artist, title);
-  if (cleveland) return cleveland;
+if (cleveland) return cleveland;
 
-  return searchWikimediaCommons(artist, title);
+
+
+return searchWikimediaCommons(artist, title);
 }
